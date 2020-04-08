@@ -15,8 +15,6 @@ import java.util.Set;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
 
-import static org.jetlang.remote.core.RawMsgHandler.NULL_RAW_MSG_HANDLER;
-
 public class JetlangStreamSession extends JetlangBaseSession implements JetlangRemotingProtocol.Handler {
 
     private final MessageStreamWriter socket;
@@ -30,10 +28,6 @@ public class JetlangStreamSession extends JetlangBaseSession implements JetlangR
         public void run() {
         }
     };
-
-    public JetlangStreamSession(Object id, MessageStreamWriter socket, Fiber sendFiber, ErrorHandler errorHandler) {
-        this(id, socket, sendFiber, errorHandler, NULL_RAW_MSG_HANDLER);
-    }
 
     public JetlangStreamSession(Object id, MessageStreamWriter socket, Fiber sendFiber,
                                 ErrorHandler errorHandler, RawMsgHandler rawMsgHandler) {
