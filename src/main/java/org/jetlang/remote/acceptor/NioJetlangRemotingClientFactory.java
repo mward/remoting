@@ -3,6 +3,7 @@ package org.jetlang.remote.acceptor;
 import org.jetlang.core.Disposable;
 import org.jetlang.fibers.NioControls;
 import org.jetlang.fibers.NioFiber;
+import org.jetlang.remote.core.RawMsgHandler;
 import org.jetlang.remote.core.Serializer;
 
 import java.net.SocketAddress;
@@ -11,6 +12,8 @@ import java.nio.channels.SelectionKey;
 import java.nio.channels.SocketChannel;
 import java.nio.charset.Charset;
 import java.util.concurrent.TimeUnit;
+
+import static org.jetlang.remote.core.RawMsgHandler.NULL_RAW_MSG_HANDLER;
 
 public class NioJetlangRemotingClientFactory implements NioAcceptorHandler.ClientFactory {
 
@@ -34,6 +37,13 @@ public class NioJetlangRemotingClientFactory implements NioAcceptorHandler.Clien
         }
 
         void onHandlerException(Exception failed);
+
+        /**
+         * factory method, implementation will typically need to provide a new instance for each call
+         */
+        default RawMsgHandler createRawMsgHandler() {
+            return NULL_RAW_MSG_HANDLER;
+        }
     }
 
     public NioJetlangRemotingClientFactory(Serializer serializer, JetlangSessionConfig config, Handler handler, NioJetlangSendFiber sendFiber, Charset charset) {
@@ -52,6 +62,7 @@ public class NioJetlangRemotingClientFactory implements NioAcceptorHandler.Clien
             throw new RuntimeException(e);
         }
         Hb hb = new Hb();
+        RawMsgHandler rawMsgHandler = handler.createRawMsgHandler();
         final JetlangNioSession session = new JetlangNioSession(fiber, channel, sendFiber, new Id(channel), new JetlangNioSession.ErrorHandler() {
             @Override
             public void onUnhandledReplyMsg(int reqId, String dataTopicVal, Object readObject) {
@@ -67,12 +78,13 @@ public class NioJetlangRemotingClientFactory implements NioAcceptorHandler.Clien
             public void onHandlerException(Exception failed) {
                 handler.onHandlerException(failed);
             }
-        });
+        }, rawMsgHandler);
+
         Runnable onClose = () -> {
             hb.onClose();
             session.onClose(new SessionCloseEvent());
         };
-        final NioJetlangChannelHandler handler = new NioJetlangChannelHandler(channel, session, serializer.getReader(), onClose, charset);
+        final NioJetlangChannelHandler handler = new NioJetlangChannelHandler(channel, session, serializer.getReader(), onClose, charset, rawMsgHandler);
         this.handler.onNewSession(session);
         hb.startHb(fiber, session, handler, config);
         controls.addHandler(handler);
